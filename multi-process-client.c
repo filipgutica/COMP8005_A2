@@ -66,7 +66,7 @@ int main (int argc, char **argv)
 			exit(1);
 	}
 
- for (i = 0; i < 10; i++)
+ for (i = 0; i < 100; i++)
  {
 
 		 usleep(10000);

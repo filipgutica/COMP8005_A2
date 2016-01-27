@@ -150,6 +150,15 @@ void* ClearSocket (void* param)
                 close(fd);
                 return NULL;
             }
+            if (n == -1)
+            {
+                if (errno != EAGAIN && errno != EWOULDBLOCK)
+                {
+                    close(fd);
+                    return NULL;
+                }
+                continue;
+            }
 
         }
         qDebug() << "Sending: " << buf;
