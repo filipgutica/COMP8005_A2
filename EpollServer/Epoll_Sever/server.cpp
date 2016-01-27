@@ -68,6 +68,7 @@ void* StartServer (void *param)
     {
         //struct epoll_event events[MAX_EVENTS];
         num_fds = epoll_wait (epoll_fd, events, EPOLL_QUEUE_LEN, -1);
+
         if (num_fds < 0)
             SystemFatal ("Error in epoll_wait!");
 
@@ -93,7 +94,7 @@ void* StartServer (void *param)
                     {
                         perror("accept");
                     }
-                        continue;
+                    continue;
                 }
 
                 // Make the fd_new non-blocking
@@ -105,12 +106,13 @@ void* StartServer (void *param)
                 if (epoll_ctl (epoll_fd, EPOLL_CTL_ADD, fd_new, &event) == -1)
                     SystemFatal ("epoll_ctl");
 
-                printf(" Remote Address:  %s\n", inet_ntoa(remote_addr.sin_addr));
+                qDebug() << " Remote Address: " << inet_ntoa(remote_addr.sin_addr);
                 continue;
             }
             else
             {
                 // Case 3: One of the sockets has read data
+                qDebug() << "Creating thread to service Client";
                 thrdInfo->fd = events[i].data.fd;
                 pthread_create(&readThread, NULL, &ClearSocket, (void*)thrdInfo);
             }
@@ -119,7 +121,6 @@ void* StartServer (void *param)
         }
     }
 
-    pthread_join(readThread, NULL);
     close(fd_server);
     exit (EXIT_SUCCESS);
 }
@@ -142,12 +143,14 @@ void* ClearSocket (void* param)
             bp += n;
             bytes_to_read -= n;
 
+
             if (n == 0)
             {
-                close(fd);
                 qDebug() << "Client Disconnect";
-                break;
+                close(fd);
+                return NULL;
             }
+
         }
         qDebug() << "Sending: " << buf;
 
@@ -155,8 +158,9 @@ void* ClearSocket (void* param)
 
 
     }
+    qDebug() << "Client Disconnect";
     close(fd);
-    pthread_exit(0);
+    exit(0);
 
 }
 
