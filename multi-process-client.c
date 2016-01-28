@@ -28,6 +28,7 @@
 --	server: epoll_svr.c
 ---------------------------------------------------------------------------------------*/
 #include <stdio.h>
+#include <string.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -66,7 +67,7 @@ int main (int argc, char **argv)
 			exit(1);
 	}
 
- for (i = 0; i < 100; i++)
+ for (i = 0; i < 1000; i++)
  {
 
 		 usleep(10000);
@@ -76,6 +77,7 @@ int main (int argc, char **argv)
 		 clock_t start = clock(), diff;
 
 		  char *bp, rbuf[BUFLEN], sbuf[BUFLEN], **pptr;
+			memset(sbuf, 0, BUFLEN);
 			// Create the socket
 			if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 			{

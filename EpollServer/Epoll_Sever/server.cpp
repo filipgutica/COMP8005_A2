@@ -1,5 +1,10 @@
 #include "server.h"
+#include "application.h"
+#include <QtConcurrent/qtconcurrentrun.h>
 
+using namespace QtConcurrent;
+
+Application *app;
 
 //Globals
 int fd_server;
@@ -16,6 +21,8 @@ void* StartServer (void *param)
     pthread_t readThread;
 
     thrdParams *thrdInfo = new thrdParams();
+
+    app = (Application*) param;
 
     // set up the signal handler to close the server socket when CTRL-c is received
     act.sa_handler = close_fd;
@@ -107,13 +114,14 @@ void* StartServer (void *param)
                     SystemFatal ("epoll_ctl");
 
                 qDebug() << " Remote Address: " << inet_ntoa(remote_addr.sin_addr);
+                app->ClientConnect();
                 continue;
             }
             else
             {
                 // Case 3: One of the sockets has read data
-                qDebug() << "Creating thread to service Client";
                 thrdInfo->fd = events[i].data.fd;
+
                 pthread_create(&readThread, NULL, &ClearSocket, (void*)thrdInfo);
             }
 
@@ -148,13 +156,13 @@ void* ClearSocket (void* param)
             {
                 qDebug() << "Client Disconnect";
                 close(fd);
+                app->ClientDisconnect();
                 return NULL;
             }
             if (n == -1)
             {
                 if (errno != EAGAIN && errno != EWOULDBLOCK)
                 {
-                    close(fd);
                     return NULL;
                 }
                 continue;
@@ -169,7 +177,7 @@ void* ClearSocket (void* param)
     }
     qDebug() << "Client Disconnect";
     close(fd);
-    exit(0);
+    return NULL;
 
 }
 

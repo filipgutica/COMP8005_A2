@@ -1,7 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-
 #include <QMessageBox>
+#include <QFuture>
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -26,22 +27,22 @@ MainWindow::~MainWindow()
 
 void MainWindow::acceptConnection()
 {
-    QTcpSocket *clientConnection = _tcpServ->nextPendingConnection();
+    _socket = _tcpServ->nextPendingConnection();
 
-    QString strInfo = QString("Accepted connection from %1 Socket Desc: %2").arg(clientConnection->peerAddress().toString()).arg(clientConnection->socketDescriptor());
+    QString strInfo = QString("Accepted connection from %1 Socket Desc: %2").arg(_socket->peerAddress().toString()).arg(_socket->socketDescriptor());
 
     clientConnected();
 
+    connect(_socket, SIGNAL(readyRead()), this, SLOT(readSocket()), Qt::DirectConnection);
+    connect(_socket, SIGNAL(disconnected()), this, SLOT(handleSocketDisconnect()), Qt::DirectConnection);
+
     //qDebug() << strInfo;
 
-    ServerThread *thrd = new ServerThread(clientConnection->socketDescriptor(), this);
+    ServerThread *thrd = new ServerThread(_socket->socketDescriptor(), this);
 
     connect(thrd, SIGNAL(finished()), thrd, SLOT(deleteLater()));
 
-
     thrd->start();
-   // clientConnection->close();
-   // clientConnection->deleteLater();
 
 }
 
@@ -74,7 +75,40 @@ void MainWindow::clientDisconnected()
 
 }
 
-void MainWindow::socketReady()
+void MainWindow::readSocket()
 {
+    run(readThrd, _socket->socketDescriptor());
+
+  //  _socket->waitForBytesWritten();
+
+}
+
+void MainWindow::handleSocketDisconnect()
+{
+    if (_socket->isOpen())
+    {
+
+        qDebug() << "CLient Disconnect " <<  _socket->socketDescriptor();
+
+        _socket->close();
+        _socket->deleteLater();
+
+        clientDisconnected();
+
+    }
+}
+
+void readThrd(qintptr sd)
+{
+    QTcpSocket socket;
+    socket.setSocketDescriptor(sd);
+
+    QByteArray data = socket.readAll();
+
+    qDebug() << "Received: " << data;
+
+    socket.write(data);
+
+    socket.waitForBytesWritten();
 
 }
