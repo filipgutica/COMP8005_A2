@@ -35,6 +35,7 @@ typedef struct thrdParams
 void* StartServer(void *param);
 void SystemFatal (const char* message);
 void* ClearSocket (void *param);
+void* HandleClient(void *param);
 void close_fd (int);
 
 

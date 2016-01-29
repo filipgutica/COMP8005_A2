@@ -23,6 +23,7 @@ void* StartServer (void *param)
     thrdParams *thrdInfo = new thrdParams();
 
     app = (Application*) param;
+    QThreadPool::globalInstance()->setMaxThreadCount(1000000);
 
     // set up the signal handler to close the server socket when CTRL-c is received
     act.sa_handler = close_fd;
@@ -65,7 +66,7 @@ void* StartServer (void *param)
         SystemFatal("epoll_create");
 
     // Add the server socket to the epoll event loop
-    event.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET;
+    event.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET | EPOLLRDHUP;
     event.data.fd = fd_server;
     if (epoll_ctl (epoll_fd, EPOLL_CTL_ADD, fd_server, &event) == -1)
         SystemFatal("epoll_ctl");
@@ -90,6 +91,7 @@ void* StartServer (void *param)
             }
             assert (events[i].events & EPOLLIN);
 
+
             // Case 2: Server is receiving a connection request
             if (events[i].data.fd == fd_server)
             {
@@ -113,16 +115,44 @@ void* StartServer (void *param)
                 if (epoll_ctl (epoll_fd, EPOLL_CTL_ADD, fd_new, &event) == -1)
                     SystemFatal ("epoll_ctl");
 
+
+
                 qDebug() << " Remote Address: " << inet_ntoa(remote_addr.sin_addr);
                 app->ClientConnect();
                 continue;
             }
-            else
+
+            if (events[i].events & (EPOLLIN))
             {
                 // Case 3: One of the sockets has read data
                 thrdInfo->fd = events[i].data.fd;
 
                 pthread_create(&readThread, NULL, &ClearSocket, (void*)thrdInfo);
+
+                //QFuture<int> future = QtConcurrent::run(ClearSocket, (void*)thrdInfo);
+                //future.waitForFinished();
+                //int thrdResult = future.result();
+
+                /*if (thrdResult == 0)
+                {
+                    //qDebug() << "Client Disconnect";
+                    //app->ClientDisconnect();
+                    //close(events[i].data.fd);
+
+                }
+                if (thrdResult == -1) // ERROR
+                {
+                    close(events[i].data.fd);
+                }*/
+
+
+            }
+            if ( events[i].events & ( EPOLLRDHUP))
+            {
+                qDebug() << "Client Disconnect";
+                app->ClientDisconnect();
+                close(events[i].data.fd);
+
             }
 
 
@@ -133,6 +163,11 @@ void* StartServer (void *param)
     exit (EXIT_SUCCESS);
 }
 
+void* HandleClient(void *param)
+{
+
+    int fd_new = ((thrdParams*)param)->fd;
+}
 
 void* ClearSocket (void* param)
 {
@@ -141,43 +176,40 @@ void* ClearSocket (void* param)
     int fd = ((thrdParams*) param)->fd;
 
 
-    while (TRUE)
+
+
+    bp = buf;
+    bytes_to_read = BUFLEN;
+    while ((n = recv (fd, bp, bytes_to_read, 0)) < BUFLEN)
     {
+        bp += n;
+        bytes_to_read -= n;
 
-        bp = buf;
-        bytes_to_read = BUFLEN;
-        while ((n = recv (fd, bp, bytes_to_read, 0)) < BUFLEN)
+
+        if (n == 0)
         {
-            bp += n;
-            bytes_to_read -= n;
-
-
-            if (n == 0)
+            //qDebug() << "Client Disconnect";
+            //close(fd);
+            //app->ClientDisconnect();
+            return NULL;
+        }
+        if (n == -1)
+        {
+            if (errno != EAGAIN && errno != EWOULDBLOCK)
             {
-                qDebug() << "Client Disconnect";
-                close(fd);
-                app->ClientDisconnect();
                 return NULL;
             }
-            if (n == -1)
-            {
-                if (errno != EAGAIN && errno != EWOULDBLOCK)
-                {
-                    return NULL;
-                }
-                continue;
-            }
-
+            continue;
         }
-        qDebug() << "Sending: " << buf;
-
-        send (fd, buf, BUFLEN, 0);
-
 
     }
-    qDebug() << "Client Disconnect";
-    close(fd);
-    return NULL;
+    qDebug() << "Sending: " << buf;
+
+    send (fd, buf, BUFLEN, 0);
+
+    return NULL; // Return n bytes read immediately we dont want this thread running forever.
+
+
 
 }
 
