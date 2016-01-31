@@ -41,6 +41,8 @@
 
 #define SERVER_TCP_PORT		7000	// Default port
 #define BUFLEN			80  	// Buffer length
+#define NUM_CLIENTS 10000
+#define NUM_MESSAGES 20
 
 int main (int argc, char **argv)
 {
@@ -66,7 +68,7 @@ int main (int argc, char **argv)
 			exit(1);
 	}
 
- for (i = 0; i < 100; i++)
+ for (i = 0; i < NUM_CLIENTS; i++)
  {
 
 		 usleep(10000);
@@ -103,27 +105,32 @@ int main (int argc, char **argv)
 			pptr = hp->h_addr_list;
 			printf("\t\tIP Address: %s\n", inet_ntop(hp->h_addrtype, *pptr, str, sizeof(str)));
 
-			printf("Transmit:\n");
+			int j = 0;
+			for (j = 0; j< NUM_MESSAGES; j++)
+			{
+				printf("Transmit:\n");
 
 			// get user's text
-			sprintf (sbuf, "Hello from client!!\n");
 
-			// Transmit data through the socket
+				sprintf (sbuf, "Hello from client!!\n");
 
-			sleep(1);
-			send (sd, sbuf, BUFLEN, 0);
+				// Transmit data through the socket
+
+				sleep(1);
+				send (sd, sbuf, BUFLEN, 0);
 
 
-			printf("Receive:\n");
-			bp = rbuf;
-			bytes_to_read = BUFLEN;
 
-			// client makes repeated calls to recv until no more data is expected to arrive.
-			n = 0;
-			n = recv (sd, bp, bytes_to_read, 0);
-			printf ("%s\n", rbuf);
+				printf("Receive:\n");
+				bp = rbuf;
+				bytes_to_read = BUFLEN;
 
-			sleep(5);
+				// client makes repeated calls to recv until no more data is expected to arrive.
+				n = 0;
+				n = recv (sd, bp, bytes_to_read, 0);
+				printf ("%s\n", rbuf);
+			}
+			sleep(10);
 
 			printf("CLOSING SOCKET\n");
 
