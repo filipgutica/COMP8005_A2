@@ -84,7 +84,7 @@ int main()
         for (i = 0; i < num_fds; i++)
         {
             // Case 1: Error condition
-            if (events[i].events & (EPOLLHUP | EPOLLERR))
+            if (events[i].events & EPOLLERR)
             {
                 fputs("epoll: EPOLLERR", stderr);
                 close(events[i].data.fd);
@@ -167,8 +167,8 @@ void* ClearSocket (void* param)
     bytes_to_read = BUFLEN;
     while ((n = recv (fd, bp, bytes_to_read, 0)) < BUFLEN)
     {
-        bp += n;
-        bytes_to_read -= n;
+      //  bp += n;
+      //  bytes_to_read -= n;
 
 
         if (n == 0)
@@ -190,9 +190,28 @@ void* ClearSocket (void* param)
         }
 
     }
-    //std::cout << "Sending: " << buf << std::endl;
+    /*n = recv (fd, bp, bytes_to_read, 0);
+    if (n == 0)
+    {
+        //qDebug() << "Client Disconnect";
+        //close(fd);
+        //app->ClientDisconnect();
+        thrdCount--;
+        pthread_exit(0);
+    }
+    if (n == -1)
+    {
+        if (errno != EAGAIN && errno != EWOULDBLOCK)
+        {
+            thrdCount--;
+            pthread_exit(0);
+        }
+    }*/
+
+    std::cout << "Sending: " << buf << std::endl;
 
     send (fd, buf, BUFLEN, 0);
+    memset(bp, 0, sizeof(bp));
     thrdCount--;
     pthread_exit(0); // Return n bytes read immediately we dont want this thread running forever.
 

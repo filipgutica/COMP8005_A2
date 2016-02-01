@@ -41,8 +41,8 @@
 #include <time.h>
 
 #define SERVER_TCP_PORT		7000	// Default port
-#define BUFLEN			80  	// Buffer length
-#define NUM_CLIENTS 10000
+#define BUFLEN			1024  	// Buffer length
+#define NUM_CLIENTS 1000
 #define NUM_MESSAGES 20
 
 int main (int argc, char **argv)
