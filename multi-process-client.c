@@ -71,7 +71,6 @@ int main (int argc, char **argv)
 
  for (i = 0; i < NUM_CLIENTS; i++)
  {
-
 		// usleep(10000);
 	 if (fork() == 0)
 	 {
