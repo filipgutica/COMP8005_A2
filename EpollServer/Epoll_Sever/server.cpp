@@ -128,7 +128,7 @@ void* StartServer (void *param)
                 thrdInfo->fd = events[i].data.fd;
 
                 pthread_create(&readThread, NULL, &ClearSocket, (void*)thrdInfo);
-
+                pthread_join(readThread, NULL);
                 //QFuture<int> future = QtConcurrent::run(ClearSocket, (void*)thrdInfo);
                 //future.waitForFinished();
                 //int thrdResult = future.result();
@@ -191,13 +191,13 @@ void* ClearSocket (void* param)
             //qDebug() << "Client Disconnect";
             //close(fd);
             //app->ClientDisconnect();
-            return NULL;
+            pthread_exit(0);
         }
         if (n == -1)
         {
             if (errno != EAGAIN && errno != EWOULDBLOCK)
             {
-                return NULL;
+                pthread_exit(0);
             }
             continue;
         }
@@ -207,7 +207,7 @@ void* ClearSocket (void* param)
 
     send (fd, buf, BUFLEN, 0);
 
-    return NULL; // Return n bytes read immediately we dont want this thread running forever.
+    pthread_exit(0);// Return n bytes read immediately we dont want this thread running forever.
 
 
 
