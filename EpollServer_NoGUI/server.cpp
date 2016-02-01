@@ -1,15 +1,13 @@
 #include "server.h"
-#include "application.h"
-#include <QtConcurrent/qtconcurrentrun.h>
 
-using namespace QtConcurrent;
 
-Application *app;
 
 //Globals
 int fd_server;
+int thrdCount;
+int numClients;
 
-void* StartServer (void *param)
+int main()
 {
     int i, arg;
     int num_fds, fd_new, epoll_fd;
@@ -18,12 +16,15 @@ void* StartServer (void *param)
     struct sockaddr_in addr, remote_addr;
     socklen_t addr_size = sizeof(struct sockaddr_in);
     struct sigaction act;
-    pthread_t readThread;
+    pthread_t readThread, updateConsoleThrd;
 
     thrdParams *thrdInfo = new thrdParams();
 
-    app = (Application*) param;
-    QThreadPool::globalInstance()->setMaxThreadCount(1000000);
+    thrdCount = 0;
+    numClients = 0;
+
+    pthread_create(&updateConsoleThrd, NULL, &UpdateConsole, (void*)1);
+
 
     // set up the signal handler to close the server socket when CTRL-c is received
     act.sa_handler = close_fd;
@@ -95,7 +96,7 @@ void* StartServer (void *param)
             // Case 2: Server is receiving a connection request
             if (events[i].data.fd == fd_server)
             {
-                //socklen_t addr_size = sizeof(remote_addr);
+                socklen_t addr_size = sizeof(remote_addr);
                 fd_new = accept (fd_server, (struct sockaddr*) &remote_addr, &addr_size);
                 if (fd_new == -1)
                 {
@@ -117,8 +118,10 @@ void* StartServer (void *param)
 
 
 
-                qDebug() << " Remote Address: " << inet_ntoa(remote_addr.sin_addr);
-                app->ClientConnect();
+                //std::cout << " Remote Address: " << inet_ntoa(remote_addr.sin_addr) << std::endl;
+                numClients++;
+
+                //std::cout << "\r" << "Clients Connected: " << numClients << std::flush;
                 continue;
             }
 
@@ -127,34 +130,18 @@ void* StartServer (void *param)
                 // Case 3: One of the sockets has read data
                 thrdInfo->fd = events[i].data.fd;
 
+                thrdCount++;
                 pthread_create(&readThread, NULL, &ClearSocket, (void*)thrdInfo);
                 pthread_join(readThread, NULL);
-                //QFuture<int> future = QtConcurrent::run(ClearSocket, (void*)thrdInfo);
-                //future.waitForFinished();
-                //int thrdResult = future.result();
-
-                /*if (thrdResult == 0)
-                {
-                    //qDebug() << "Client Disconnect";
-                    //app->ClientDisconnect();
-                    //close(events[i].data.fd);
-
-                }
-                if (thrdResult == -1) // ERROR
-                {
-                    close(events[i].data.fd);
-                }*/
-
 
             }
             if ( events[i].events & ( EPOLLRDHUP))
             {
-                qDebug() << "Client Disconnect";
-                app->ClientDisconnect();
                 close(events[i].data.fd);
-
+                numClients--;
+                //std::cout << "\r" << "Clients Connected: " << numClients <<  std::flush;
             }
-
+            //std::cout << "\r" << "Clients Connected: " << numClients <<  std::flush;
 
         }
     }
@@ -173,10 +160,8 @@ void* ClearSocket (void* param)
 {
     int	n, bytes_to_read;
     char	*bp, buf[BUFLEN];
-    int fd = ((thrdParams*) param)->fd;
-
-
-
+    thrdParams* data = (thrdParams*) param;
+    int fd = data->fd;
 
     bp = buf;
     bytes_to_read = BUFLEN;
@@ -191,23 +176,25 @@ void* ClearSocket (void* param)
             //qDebug() << "Client Disconnect";
             //close(fd);
             //app->ClientDisconnect();
+            thrdCount--;
             pthread_exit(0);
         }
         if (n == -1)
         {
             if (errno != EAGAIN && errno != EWOULDBLOCK)
             {
+                thrdCount--;
                 pthread_exit(0);
             }
             continue;
         }
 
     }
-    qDebug() << "Sending: " << buf;
+    //std::cout << "Sending: " << buf << std::endl;
 
     send (fd, buf, BUFLEN, 0);
-
-    pthread_exit(0);// Return n bytes read immediately we dont want this thread running forever.
+    thrdCount--;
+    pthread_exit(0); // Return n bytes read immediately we dont want this thread running forever.
 
 
 
@@ -216,7 +203,7 @@ void* ClearSocket (void* param)
 // Prints the error stored in errno and aborts the program.
 void SystemFatal(const char* message)
 {
-    qDebug() << message;
+    std::cout << message << std::endl;
     exit (EXIT_FAILURE);
 }
 
@@ -225,4 +212,13 @@ void close_fd (int signo)
 {
     close(fd_server);
     exit (EXIT_SUCCESS);
+}
+
+void* UpdateConsole(void* param)
+{
+  while(TRUE)
+  {
+    sleep(1);
+    std::cout << "\r" << "Clients Connected: " << numClients <<  std::flush;
+  }
 }

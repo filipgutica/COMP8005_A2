@@ -7,6 +7,10 @@ Application::Application(QWidget *parent) :
     ui(new Ui::Application)
 {
     ui->setupUi(this);
+
+    _numClients = 0;
+
+    connect(this, SIGNAL(valueChangedLog(QString)), ui->lblNumClnts, SLOT(setText(QString)), Qt::DirectConnection);
 }
 
 Application::~Application()
@@ -18,5 +22,21 @@ void Application::on_actionStart_Server_triggered()
 {
     pthread_t listenThread;
 
-    pthread_create(&listenThread, NULL, &StartServer, (void*)1);
+
+    pthread_create(&listenThread, NULL, &StartServer, (void*)this);
 }
+
+void Application::ClientConnect()
+{
+    _numClients++;
+
+    emit valueChangedLog(QString::number(_numClients));
+}
+
+void Application::ClientDisconnect()
+{
+    _numClients--;
+
+    emit valueChangedLog(QString::number(_numClients));
+}
+

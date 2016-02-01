@@ -18,7 +18,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <pthread.h>
-#include <QDebug>
+#include <iostream>
 
 #define TRUE 		1
 #define FALSE 		0
@@ -29,15 +29,15 @@
 typedef struct thrdParams
 {
     int fd;
+    int thrdResult;
 } thrdParams;
 
 
-void* StartServer(void *param);
 void SystemFatal (const char* message);
 void* ClearSocket (void *param);
 void* HandleClient(void *param);
 void close_fd (int);
-
+void* UpdateConsole(void *param);
 
 
 #endif // SERVER_H

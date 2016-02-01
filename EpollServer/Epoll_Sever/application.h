@@ -17,12 +17,18 @@ class Application : public QMainWindow
 public:
     explicit Application(QWidget *parent = 0);
     ~Application();
+    void ClientConnect();
+    void ClientDisconnect();
 
 private slots:
     void on_actionStart_Server_triggered();
 
+signals:
+    void valueChangedLog(QString);
+
 private:
     Ui::Application *ui;
+    int _numClients;
 };
 
 #endif // APPLICATION_H

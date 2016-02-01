@@ -7,10 +7,16 @@
 #include "serverthread.h"
 #include <QThreadPool>
 #include <QVector>
+#include <QtConcurrent/qtconcurrentrun.h>
+
+using namespace QtConcurrent;
 
 #define MAX_THREADS 100
 
 class ServerThread;
+
+
+extern void readThrd(qintptr);
 
 namespace Ui {
 class MainWindow;
@@ -32,7 +38,8 @@ signals:
 
 private slots:
     void acceptConnection();
-    void socketReady();
+    void readSocket();
+    void handleSocketDisconnect();
     void on_actionStartServer_triggered();
 
 private:
@@ -42,6 +49,7 @@ private:
     int _numClients;
     QThreadPool *pool;
     int _currentThreadCount;
+
 
 
 };
