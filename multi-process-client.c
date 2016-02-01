@@ -28,6 +28,7 @@
 --	server: epoll_svr.c
 ---------------------------------------------------------------------------------------*/
 #include <stdio.h>
+#include <string.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -71,13 +72,14 @@ int main (int argc, char **argv)
  for (i = 0; i < NUM_CLIENTS; i++)
  {
 
-		 usleep(10000);
+		// usleep(10000);
 	 if (fork() == 0)
 	 {
 
 		 clock_t start = clock(), diff;
 
 		  char *bp, rbuf[BUFLEN], sbuf[BUFLEN], **pptr;
+			memset(sbuf, 0, BUFLEN);
 			// Create the socket
 			if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 			{
@@ -116,7 +118,7 @@ int main (int argc, char **argv)
 
 				// Transmit data through the socket
 
-				sleep(1);
+				//sleep(1);
 				send (sd, sbuf, BUFLEN, 0);
 
 
@@ -127,7 +129,11 @@ int main (int argc, char **argv)
 
 				// client makes repeated calls to recv until no more data is expected to arrive.
 				n = 0;
-				n = recv (sd, bp, bytes_to_read, 0);
+				while ((n = recv (sd, bp, bytes_to_read, 0)) < BUFLEN)
+				{
+					bp += n;
+					bytes_to_read -= n;
+				}
 				printf ("%s\n", rbuf);
 			}
 			sleep(10);
