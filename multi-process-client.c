@@ -42,7 +42,7 @@
 
 #define SERVER_TCP_PORT		7000	// Default port
 #define BUFLEN			1024  	// Buffer length
-#define NUM_CLIENTS 1000
+#define NUM_CLIENTS 10000
 #define NUM_MESSAGES 20
 
 int main (int argc, char **argv)
@@ -109,6 +109,7 @@ int main (int argc, char **argv)
 			int j = 0;
 			for (j = 0; j< NUM_MESSAGES; j++)
 			{
+				sleep(1);
 				printf("Transmit:\n");
 
 			// get user's text
