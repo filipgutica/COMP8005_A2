@@ -19,6 +19,7 @@ public:
     ~Application();
     void ClientConnect();
     void ClientDisconnect();
+    void UpdateGui(int);
 
 private slots:
     void on_actionStart_Server_triggered();

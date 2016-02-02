@@ -40,3 +40,7 @@ void Application::ClientDisconnect()
     emit valueChangedLog(QString::number(_numClients));
 }
 
+void Application::UpdateGui(int n)
+{
+    emit valueChangedLog(QString::number(n));
+}

@@ -86,7 +86,8 @@ int main()
             // Case 1: Error condition
             if (events[i].events & EPOLLERR)
             {
-                fputs("epoll: EPOLLERR", stderr);
+                numClients--;
+                std::cout << "EPOLL ERROR" << std::endl;
                 close(events[i].data.fd);
                 continue;
             }
@@ -165,10 +166,10 @@ void* ClearSocket (void* param)
 
     bp = buf;
     bytes_to_read = BUFLEN;
-    while ((n = recv (fd, bp, bytes_to_read, 0)) < BUFLEN)
+    /*while ((n = recv (fd, bp, bytes_to_read, 0)) < BUFLEN)
     {
-      //  bp += n;
-      //  bytes_to_read -= n;
+        bp += n;
+        bytes_to_read -= n;
 
 
         if (n == 0)
@@ -189,8 +190,10 @@ void* ClearSocket (void* param)
             continue;
         }
 
-    }
-    /*n = recv (fd, bp, bytes_to_read, 0);
+    }*/
+    //std::cout << "Sending: " << buf << std::endl;
+    n = recv (fd, bp, bytes_to_read, 0);
+
     if (n == 0)
     {
         //qDebug() << "Client Disconnect";
@@ -206,12 +209,8 @@ void* ClearSocket (void* param)
             thrdCount--;
             pthread_exit(0);
         }
-    }*/
-
-    std::cout << "Sending: " << buf << std::endl;
-
+    }
     send (fd, buf, BUFLEN, 0);
-    memset(bp, 0, sizeof(bp));
     thrdCount--;
     pthread_exit(0); // Return n bytes read immediately we dont want this thread running forever.
 
@@ -238,6 +237,6 @@ void* UpdateConsole(void* param)
   while(TRUE)
   {
     sleep(1);
-    std::cout << "\r" << "Clients Connected: " << numClients <<  std::flush;
+    std::cout << "Clients Connected: " << numClients <<  std::endl;
   }
 }

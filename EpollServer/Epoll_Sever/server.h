@@ -23,7 +23,7 @@
 #define TRUE 		1
 #define FALSE 		0
 #define EPOLL_QUEUE_LEN	256
-#define BUFLEN		80
+#define BUFLEN		1024
 #define SERVER_PORT	7000
 
 typedef struct thrdParams
@@ -37,6 +37,7 @@ void SystemFatal (const char* message);
 void* ClearSocket (void *param);
 void* HandleClient(void *param);
 void close_fd (int);
+void* UpdateConsole(void *param);
 
 
 

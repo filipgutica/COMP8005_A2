@@ -8,9 +8,11 @@ Application *app;
 
 //Globals
 int fd_server;
+int numClients;
 
 void* StartServer (void *param)
 {
+    numClients = 0;
     int i, arg;
     int num_fds, fd_new, epoll_fd;
     static struct epoll_event events[EPOLL_QUEUE_LEN], event;
@@ -18,9 +20,11 @@ void* StartServer (void *param)
     struct sockaddr_in addr, remote_addr;
     socklen_t addr_size = sizeof(struct sockaddr_in);
     struct sigaction act;
-    pthread_t readThread;
+    pthread_t readThread, updateConsoleThrd;
 
     thrdParams *thrdInfo = new thrdParams();
+
+    pthread_create(&updateConsoleThrd, NULL, &UpdateConsole, (void*)1);
 
     app = (Application*) param;
     QThreadPool::globalInstance()->setMaxThreadCount(1000000);
@@ -118,7 +122,8 @@ void* StartServer (void *param)
 
 
                 qDebug() << " Remote Address: " << inet_ntoa(remote_addr.sin_addr);
-                app->ClientConnect();
+                //app->ClientConnect();
+                numClients++;
                 continue;
             }
 
@@ -129,28 +134,14 @@ void* StartServer (void *param)
 
                 pthread_create(&readThread, NULL, &ClearSocket, (void*)thrdInfo);
                 pthread_join(readThread, NULL);
-                //QFuture<int> future = QtConcurrent::run(ClearSocket, (void*)thrdInfo);
-                //future.waitForFinished();
-                //int thrdResult = future.result();
-
-                /*if (thrdResult == 0)
-                {
-                    //qDebug() << "Client Disconnect";
-                    //app->ClientDisconnect();
-                    //close(events[i].data.fd);
-
-                }
-                if (thrdResult == -1) // ERROR
-                {
-                    close(events[i].data.fd);
-                }*/
 
 
             }
             if ( events[i].events & ( EPOLLRDHUP))
             {
                 qDebug() << "Client Disconnect";
-                app->ClientDisconnect();
+                //app->ClientDisconnect();
+                numClients--;
                 close(events[i].data.fd);
 
             }
@@ -225,4 +216,13 @@ void close_fd (int signo)
 {
     close(fd_server);
     exit (EXIT_SUCCESS);
+}
+
+void* UpdateConsole(void* param)
+{
+  while(TRUE)
+  {
+    sleep(1);
+    app->UpdateGui(numClients);
+  }
 }
