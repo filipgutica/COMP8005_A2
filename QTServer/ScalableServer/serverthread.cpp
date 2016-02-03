@@ -9,7 +9,7 @@ void ServerThread::run()
 {
     _tcpSocket = new QTcpSocket();
 
-    qDebug () << "Setting socket descriptor " << _socketDescriptor;
+    //qDebug () << "Setting socket descriptor " << _socketDescriptor;
 
     if (!_tcpSocket->setSocketDescriptor(_socketDescriptor))
     {
@@ -29,7 +29,7 @@ void ServerThread::readSocket()
 
         QByteArray data = _tcpSocket->readAll();
 
-        qDebug() << "Received: " << data;
+        //qDebug() << "Received: " << data;
 
         _tcpSocket->write(data);
 
@@ -43,7 +43,7 @@ void ServerThread::handleSocketDisconnect()
     if (_tcpSocket->isOpen())
     {
 
-        qDebug() << "CLient Disconnect " <<  _tcpSocket->socketDescriptor();
+        //qDebug() << "CLient Disconnect " <<  _tcpSocket->socketDescriptor();
 
         _tcpSocket->close();
         _tcpSocket->deleteLater();

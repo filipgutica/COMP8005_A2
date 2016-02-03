@@ -84,7 +84,7 @@ int main()
         for (i = 0; i < num_fds; i++)
         {
             // Case 1: Error condition
-            if (events[i].events & EPOLLERR)
+            if (events[i].events & (EPOLLHUP | EPOLLERR))
             {
                 numClients--;
                 std::cout << "EPOLL ERROR" << std::endl;
@@ -136,7 +136,7 @@ int main()
                 pthread_join(readThread, NULL);
 
             }
-            if ( events[i].events & ( EPOLLRDHUP))
+            if ( events[i].events & (EPOLLRDHUP))
             {
                 close(events[i].data.fd);
                 numClients--;
@@ -166,7 +166,7 @@ void* ClearSocket (void* param)
 
     bp = buf;
     bytes_to_read = BUFLEN;
-    /*while ((n = recv (fd, bp, bytes_to_read, 0)) < BUFLEN)
+    while ((n = recv (fd, bp, bytes_to_read, 0)) < BUFLEN)
     {
         bp += n;
         bytes_to_read -= n;
@@ -190,9 +190,9 @@ void* ClearSocket (void* param)
             continue;
         }
 
-    }*/
+    }
     //std::cout << "Sending: " << buf << std::endl;
-    n = recv (fd, bp, bytes_to_read, 0);
+    /*n = recv (fd, bp, bytes_to_read, 0);
 
     if (n == 0)
     {
@@ -209,7 +209,8 @@ void* ClearSocket (void* param)
             thrdCount--;
             pthread_exit(0);
         }
-    }
+    }*/
+
     send (fd, buf, BUFLEN, 0);
     thrdCount--;
     pthread_exit(0); // Return n bytes read immediately we dont want this thread running forever.

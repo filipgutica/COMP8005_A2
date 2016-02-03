@@ -13,7 +13,7 @@ MainWindow::MainWindow(QWidget *parent) :
     _tcpServ = new QTcpServer(this);
 
     _numClients = 0;
-
+    QThreadPool::globalInstance()->setMaxThreadCount(10000);
     connect(_tcpServ, SIGNAL(newConnection()), this, SLOT(acceptConnection()));
     connect(this, SIGNAL(valueChangedLog(QString)), ui->lblNumClnts, SLOT(setText(QString)), Qt::DirectConnection);
 }
@@ -33,16 +33,18 @@ void MainWindow::acceptConnection()
 
     clientConnected();
 
-    connect(_socket, SIGNAL(readyRead()), this, SLOT(readSocket()), Qt::DirectConnection);
+
+
+   connect(_socket, SIGNAL(readyRead()), this, SLOT(readSocket()), Qt::DirectConnection);
     connect(_socket, SIGNAL(disconnected()), this, SLOT(handleSocketDisconnect()), Qt::DirectConnection);
 
     //qDebug() << strInfo;
 
-    ServerThread *thrd = new ServerThread(_socket->socketDescriptor(), this);
+   // ServerThread *thrd = new ServerThread(_socket->socketDescriptor(), this);
 
-    connect(thrd, SIGNAL(finished()), thrd, SLOT(deleteLater()));
+   // connect(thrd, SIGNAL(finished()), thrd, SLOT(deleteLater()));
 
-    thrd->start();
+    //thrd->start();
 
 }
 
@@ -77,9 +79,17 @@ void MainWindow::clientDisconnected()
 
 void MainWindow::readSocket()
 {
-    run(readThrd, _socket->socketDescriptor());
+    //run(readThrd, _socket->socketDescriptor());
 
   //  _socket->waitForBytesWritten();
+
+    QByteArray data = _socket->readAll();
+
+  //  qDebug() << "Received: " << data;
+
+   _socket->write(data);
+
+   // socket.waitForBytesWritten();
 
 }
 
@@ -91,7 +101,6 @@ void MainWindow::handleSocketDisconnect()
         qDebug() << "CLient Disconnect " <<  _socket->socketDescriptor();
 
         _socket->close();
-        _socket->deleteLater();
 
         clientDisconnected();
 
@@ -109,6 +118,6 @@ void readThrd(qintptr sd)
 
     socket.write(data);
 
-    socket.waitForBytesWritten();
+   // socket.waitForBytesWritten();
 
 }

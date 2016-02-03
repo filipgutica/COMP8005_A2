@@ -42,8 +42,8 @@
 
 #define SERVER_TCP_PORT		7000	// Default port
 #define BUFLEN			1024  	// Buffer length
-#define NUM_CLIENTS 1000
-#define NUM_MESSAGES 20
+#define NUM_CLIENTS 10000
+#define NUM_MESSAGES 100
 
 int main (int argc, char **argv)
 {
@@ -109,7 +109,8 @@ int main (int argc, char **argv)
 			int j = 0;
 			for (j = 0; j< NUM_MESSAGES; j++)
 			{
-				printf("Transmit:\n");
+				sleep(1);
+			//	printf("Transmit:\n");
 
 			// get user's text
 
@@ -122,7 +123,7 @@ int main (int argc, char **argv)
 
 
 
-				printf("Receive:\n");
+			//	printf("Receive:\n");
 				bp = rbuf;
 				bytes_to_read = BUFLEN;
 
@@ -137,7 +138,7 @@ int main (int argc, char **argv)
 			}
 			sleep(10);
 
-			printf("CLOSING SOCKET\n");
+			//printf("CLOSING SOCKET\n");
 
 			fflush(stdout);
 			close (sd);
