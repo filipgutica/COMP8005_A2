@@ -79,15 +79,15 @@ void MainWindow::clientDisconnected()
 
 void MainWindow::readSocket()
 {
-    //run(readThrd, _socket->socketDescriptor());
-
+    QFuture<void> future = run(readThrd, _socket->socketDescriptor());
+    future.waitForFinished();
   //  _socket->waitForBytesWritten();
 
-    QByteArray data = _socket->readAll();
+    //QByteArray data = _socket->readAll();
 
   //  qDebug() << "Received: " << data;
 
-   _socket->write(data);
+   //_socket->write(data);
 
    // socket.waitForBytesWritten();
 
@@ -118,6 +118,7 @@ void readThrd(qintptr sd)
 
     socket.write(data);
 
+    return;
    // socket.waitForBytesWritten();
 
 }

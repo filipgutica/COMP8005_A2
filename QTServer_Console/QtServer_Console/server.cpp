@@ -61,7 +61,8 @@ void Server::run()
 {
 
     // Execute the epoll Server::event loop
-
+    while(true)
+    {
         //struct epoll_Server::event Server::events[MAX_Server::eventS];
         num_fds = epoll_wait (epoll_fd, Server::events, EPOLL_QUEUE_LEN, -1);
 
@@ -137,8 +138,8 @@ void Server::run()
         }
 
 
-
-    exec();
+    }
+    //exec();
 }
 
 void Server::SystemFatal(const char *message)
