@@ -2,7 +2,6 @@ QT += core
 QT -= gui
 
 QMAKE_CXX       = g++
-QMAKE_CXXFLAGS += -levent
 
 CONFIG += c++11
 
@@ -14,6 +13,11 @@ TEMPLATE = app
 
 SOURCES += main.cpp \
     server.cpp
+
+
+QMAKE_CXXFLAGS += -levent
+
+LIBS += -levent
 
 HEADERS += \
     server.h \
