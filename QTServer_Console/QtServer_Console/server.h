@@ -26,27 +26,31 @@
 
 #define TRUE 		1
 #define FALSE 		0
-#define EPOLL_QUEUE_LEN	10000
+#define EPOLL_QUEUE_LEN	100000
 #define BUFLEN		1024
 #define SERVER_PORT	7000
-
+#define NUM_WORKERS 1
 
 typedef struct thrdParams
 {
     int fd;
+    int epoll_fd;
+    int fd_new;
+    int fd_server;
 } thrdParams;
 
 extern void *readSocket(void *param);
 extern void* UpdateConsole(void *param);
+extern void* worker(void *param);
 extern int numClients;
 
-class Server :  public QThread
+class Server
 
 {
-    Q_OBJECT
+
 public:
-    explicit Server(QObject *parent = 0);
-    void run();
+    explicit Server();
+    void startServer();
 
     static struct epoll_event events[EPOLL_QUEUE_LEN], event;
 
@@ -63,7 +67,6 @@ private:
     thrdParams *thrdInfo;
 
     void SystemFatal (const char* message);
-    void* ClearSocket (void *param);
     void close_fd (int);
 
 signals:

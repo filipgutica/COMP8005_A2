@@ -25,6 +25,7 @@
 #define EPOLL_QUEUE_LEN	256
 #define BUFLEN		1024
 #define SERVER_PORT	7000
+#define NUM_WORKERS 1
 
 typedef struct thrdParams
 {
@@ -35,9 +36,8 @@ typedef struct thrdParams
 
 void SystemFatal (const char* message);
 void* ClearSocket (void *param);
-void* HandleClient(void *param);
 void close_fd (int);
 void* UpdateConsole(void *param);
-
+void* Worker(void *param);
 
 #endif // SERVER_H

@@ -6,25 +6,24 @@
 int fd_server;
 int thrdCount;
 int numClients;
+static struct epoll_event events[EPOLL_QUEUE_LEN], event;
+int num_fds, fd_new, epoll_fd;
+
 
 int main()
 {
-    int i, arg;
-    int num_fds, fd_new, epoll_fd;
-    static struct epoll_event events[EPOLL_QUEUE_LEN], event;
+    int arg;
     int port = SERVER_PORT;
     struct sockaddr_in addr, remote_addr;
     socklen_t addr_size = sizeof(struct sockaddr_in);
     struct sigaction act;
-    pthread_t readThread, updateConsoleThrd;
-
-    thrdParams *thrdInfo = new thrdParams();
+    pthread_t updateConsoleThrd;
+    pthread_t workerThrds[NUM_WORKERS];
 
     thrdCount = 0;
     numClients = 0;
 
     pthread_create(&updateConsoleThrd, NULL, &UpdateConsole, (void*)1);
-
 
     // set up the signal handler to close the server socket when CTRL-c is received
     act.sa_handler = close_fd;
@@ -72,89 +71,95 @@ int main()
     if (epoll_ctl (epoll_fd, EPOLL_CTL_ADD, fd_server, &event) == -1)
         SystemFatal("epoll_ctl");
 
-    // Execute the epoll event loop
-    while (TRUE)
+    for (int i = 0; i< NUM_WORKERS; i++)
     {
-        //struct epoll_event events[MAX_EVENTS];
-        num_fds = epoll_wait (epoll_fd, events, EPOLL_QUEUE_LEN, -1);
-
-        if (num_fds < 0)
-            SystemFatal ("Error in epoll_wait!");
-
-        for (i = 0; i < num_fds; i++)
-        {
-            // Case 1: Error condition
-            if (events[i].events & (EPOLLHUP | EPOLLERR))
-            {
-                numClients--;
-                std::cout << "EPOLL ERROR" << std::endl;
-                close(events[i].data.fd);
-                continue;
-            }
-            assert (events[i].events & EPOLLIN);
-
-
-            // Case 2: Server is receiving a connection request
-            if (events[i].data.fd == fd_server)
-            {
-                socklen_t addr_size = sizeof(remote_addr);
-                fd_new = accept (fd_server, (struct sockaddr*) &remote_addr, &addr_size);
-                if (fd_new == -1)
-                {
-                    if (errno != EAGAIN && errno != EWOULDBLOCK)
-                    {
-                        perror("accept");
-                    }
-                    continue;
-                }
-
-                // Make the fd_new non-blocking
-                if (fcntl (fd_new, F_SETFL, O_NONBLOCK | fcntl(fd_new, F_GETFL, 0)) == -1)
-                    SystemFatal("fcntl");
-
-                // Add the new socket descriptor to the epoll loop
-                event.data.fd = fd_new;
-                if (epoll_ctl (epoll_fd, EPOLL_CTL_ADD, fd_new, &event) == -1)
-                    SystemFatal ("epoll_ctl");
-
-
-
-                //std::cout << " Remote Address: " << inet_ntoa(remote_addr.sin_addr) << std::endl;
-                numClients++;
-
-                //std::cout << "\r" << "Clients Connected: " << numClients << std::flush;
-                continue;
-            }
-
-            if (events[i].events & (EPOLLIN))
-            {
-                // Case 3: One of the sockets has read data
-                thrdInfo->fd = events[i].data.fd;
-
-                thrdCount++;
-                pthread_create(&readThread, NULL, &ClearSocket, (void*)thrdInfo);
-                pthread_join(readThread, NULL);
-
-            }
-            if ( events[i].events & (EPOLLRDHUP))
-            {
-                close(events[i].data.fd);
-                numClients--;
-                //std::cout << "\r" << "Clients Connected: " << numClients <<  std::flush;
-            }
-            //std::cout << "\r" << "Clients Connected: " << numClients <<  std::flush;
-
-        }
+      pthread_create(&workerThrds[i], NULL, &Worker, (void*)1);
+      pthread_join(workerThrds[i], NULL);
     }
 
     close(fd_server);
     exit (EXIT_SUCCESS);
 }
 
-void* HandleClient(void *param)
-{
 
-    int fd_new = ((thrdParams*)param)->fd;
+void* Worker(void *param)
+{
+  thrdParams *thrdInfo = new thrdParams();
+  struct sockaddr_in remote_addr;
+  pthread_t readThread;
+  // Execute the epoll event loop
+  while (TRUE)
+  {
+      //struct epoll_event events[MAX_EVENTS];
+      num_fds = epoll_wait (epoll_fd, events, EPOLL_QUEUE_LEN, -1);
+
+      if (num_fds < 0)
+          SystemFatal ("Error in epoll_wait!");
+
+      for (int i = 0; i < num_fds; i++)
+      {
+          // Case 1: Error condition
+          if (events[i].events & (EPOLLHUP | EPOLLERR))
+          {
+              numClients--;
+              std::cout << "EPOLL ERROR" << std::endl;
+              close(events[i].data.fd);
+              continue;
+          }
+          assert (events[i].events & EPOLLIN);
+
+
+          // Case 2: Server is receiving a connection request
+          if (events[i].data.fd == fd_server)
+          {
+              socklen_t addr_size = sizeof(remote_addr);
+              fd_new = accept (fd_server, (struct sockaddr*) &remote_addr, &addr_size);
+              if (fd_new == -1)
+              {
+                  if (errno != EAGAIN && errno != EWOULDBLOCK)
+                  {
+                      perror("accept");
+                  }
+                  continue;
+              }
+
+              // Make the fd_new non-blocking
+              if (fcntl (fd_new, F_SETFL, O_NONBLOCK | fcntl(fd_new, F_GETFL, 0)) == -1)
+                  SystemFatal("fcntl");
+
+              // Add the new socket descriptor to the epoll loop
+              event.data.fd = fd_new;
+              if (epoll_ctl (epoll_fd, EPOLL_CTL_ADD, fd_new, &event) == -1)
+                  SystemFatal ("epoll_ctl");
+
+
+
+              //std::cout << " Remote Address: " << inet_ntoa(remote_addr.sin_addr) << std::endl;
+              numClients++;
+
+              //std::cout << "\r" << "Clients Connected: " << numClients << std::flush;
+              continue;
+          }
+
+          if (events[i].events & (EPOLLIN))
+          {
+              // Case 3: One of the sockets has read data
+              thrdInfo->fd = events[i].data.fd;
+              ClearSocket((void*)thrdInfo);
+            //  pthread_create(&readThread, NULL, &ClearSocket, (void*)thrdInfo);
+            //  pthread_join(readThread, NULL);
+
+          }
+          if ( events[i].events & (EPOLLRDHUP))
+          {
+              close(events[i].data.fd);
+              numClients--;
+              //std::cout << "\r" << "Clients Connected: " << numClients <<  std::flush;
+          }
+          //std::cout << "\r" << "Clients Connected: " << numClients <<  std::flush;
+
+      }
+  }
 }
 
 void* ClearSocket (void* param)
@@ -166,7 +171,7 @@ void* ClearSocket (void* param)
 
     bp = buf;
     bytes_to_read = BUFLEN;
-    while ((n = recv (fd, bp, bytes_to_read, 0)) < BUFLEN)
+  /*  while ((n = recv (fd, bp, bytes_to_read, 0)) < BUFLEN)
     {
         bp += n;
         bytes_to_read -= n;
@@ -190,9 +195,9 @@ void* ClearSocket (void* param)
             continue;
         }
 
-    }
+    }*/
     //std::cout << "Sending: " << buf << std::endl;
-    /*n = recv (fd, bp, bytes_to_read, 0);
+    n = recv (fd, bp, bytes_to_read, 0);
 
     if (n == 0)
     {
@@ -209,7 +214,7 @@ void* ClearSocket (void* param)
             thrdCount--;
             pthread_exit(0);
         }
-    }*/
+    }
 
     send (fd, buf, BUFLEN, 0);
     thrdCount--;
