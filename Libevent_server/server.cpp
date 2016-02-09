@@ -3,7 +3,9 @@
 int main(int argc, char *argv[])
 {
 
-    server s();
+    server *s = new server();
+
+    event_dispatch();
 
     return 0;
 }
