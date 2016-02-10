@@ -166,7 +166,7 @@ void *acceptConnections(void *param)
                 }
 
                 // Add the new socket descriptor to the epoll loop
-                int n = rand() % 4;
+                int n = rand() % NUM_WORKERS;
                 Server::worker_event[n].data.fd = thrdInfo->fd_new;
                 if (epoll_ctl (thrdInfo->worker_fds[n], EPOLL_CTL_ADD, thrdInfo->fd_new, &Server::worker_event[n]) == -1)
                 {

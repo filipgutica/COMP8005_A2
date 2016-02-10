@@ -26,7 +26,7 @@
 #define EPOLL_QUEUE_LEN	64000
 #define BUFLEN		1024
 #define SERVER_PORT	7000
-#define NUM_WORKERS 4
+#define NUM_WORKERS 10
 
 typedef struct thrdParams
 {
