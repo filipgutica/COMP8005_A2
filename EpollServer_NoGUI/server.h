@@ -1,6 +1,7 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -22,22 +23,60 @@
 
 #define TRUE 		1
 #define FALSE 		0
-#define EPOLL_QUEUE_LEN	256
+#define EPOLL_QUEUE_LEN	64000
 #define BUFLEN		1024
 #define SERVER_PORT	7000
-#define NUM_WORKERS 1
+#define NUM_WORKERS 4
 
 typedef struct thrdParams
 {
     int fd;
-    int thrdResult;
+    int epoll_fd;
+    int fd_new;
+    int fd_server;
+    int eventIndex;
+    int worker_fds[NUM_WORKERS];
+    int thrdNumber;
+
 } thrdParams;
 
 
-void SystemFatal (const char* message);
-void* ClearSocket (void *param);
-void close_fd (int);
-void* UpdateConsole(void *param);
-void* Worker(void *param);
+extern void *readSocket(void *param);
+extern void* UpdateConsole(void *param);
+extern void* worker(void *param);
+extern void* acceptConnections(void *param);
+extern int numClients;
+
+class Server
+
+{
+
+public:
+    explicit Server();
+    void startServer();
+
+    static struct epoll_event events[EPOLL_QUEUE_LEN], event;
+    static struct epoll_event worker_events[NUM_WORKERS][EPOLL_QUEUE_LEN];
+    static struct epoll_event worker_event[NUM_WORKERS];
+
+private:
+    int fd_server;
+    int num_fds;
+    int epoll_fd;
+    int worker_fds[NUM_WORKERS];
+    int arg;
+    int fd_new;
+    int port;
+    struct sockaddr_in addr, remote_addr;
+    socklen_t addr_size;
+    pthread_t readThread, updateConsoleThrd;
+    thrdParams *thrdInfo;
+    thrdParams *workerParams[NUM_WORKERS];
+
+    void SystemFatal (const char* message);
+    void close_fd (int);
+
+
+};
 
 #endif // SERVER_H
