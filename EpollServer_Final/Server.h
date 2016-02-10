@@ -41,6 +41,7 @@ typedef struct thrdParams
 } thrdParams;
 
 
+extern void readSocket(int fd);
 extern void *readSocket(void *param);
 extern void* UpdateConsole(void *param);
 extern void* worker(void *param);
@@ -75,7 +76,6 @@ private:
     thrdParams *workerParams[NUM_WORKERS];
 
     void SystemFatal (const char* message);
-
 
 };
 

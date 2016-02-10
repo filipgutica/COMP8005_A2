@@ -8,7 +8,7 @@ from Queue import Queue
 
 BUFFER_SIZE = 1024
 PORT = 7000
-HOSTNAME = '192.168.0.17'
+HOSTNAME = 'localhost'
 LOG_FILE_NAME = 'client data.csv'
 
 def chatSession(hostname, port, message, sessionLenth, logFile):

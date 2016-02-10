@@ -1,4 +1,4 @@
-#include "server.h"
+#include "Server.h"
 #include <time.h>       /* time */
 
 // Epoll event queue for accepting sockets
@@ -14,14 +14,15 @@ int numClients;
 // Number of clients per each thread
 int numClientsInThread[NUM_WORKERS];
 
-int main()
+/*int main()
 {
+  system("ulimit -n 999999");
   Server *server = new Server();
 
   server->startServer();
 
   return 0;
-}
+}*/
 
 Server::Server()
 {
@@ -233,8 +234,8 @@ void* worker(void* param)
             // Case 2: Data available to read
             if (Server::worker_events[index][i].events & (EPOLLIN))
             {
-                acceptThrdParams->fd = Server::worker_events[index][i].data.fd;
-                readSocket((void*)acceptThrdParams);
+                int fd = Server::worker_events[index][i].data.fd;
+                readSocket(fd);
             }
 
             // Case 3: Socket disconnect
@@ -249,6 +250,36 @@ void* worker(void* param)
     }
 }
 
+void readSocket(int fd)
+{
+    int	n, bytes_to_read;
+    char	*bp, buf[BUFLEN];
+
+    bp = buf;
+    bytes_to_read = BUFLEN;
+
+    n = recv (fd, bp, bytes_to_read, 0);
+
+    if (n == 0)
+    {
+        // Socket is disconnected
+        close(fd);
+        return;
+    }
+    if (n == -1)
+    {
+        if (errno != EAGAIN && errno != EWOULDBLOCK)
+        {
+            // Error
+            close(fd);
+            return;
+        }
+    }
+
+    send (fd, buf, BUFLEN, 0);
+
+    return;
+}
 
 void *readSocket(void *param)
 {
