@@ -221,9 +221,6 @@ void* worker(void* param)
                 thrdInfo->fd = Server::worker_events[index][i].data.fd;
                 readSocket((void*)thrdInfo);
 
-               // QFuture<void> future = QtConcurrent::run(readSocket, (void*)thrdInfo);
-               // future.waitForFinished();
-
             }
 
             if ( Server::worker_events[index][i].events & (EPOLLRDHUP))
