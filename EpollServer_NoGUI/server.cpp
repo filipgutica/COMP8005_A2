@@ -1,12 +1,18 @@
 #include "server.h"
 #include <time.h>       /* time */
 
+// Epoll event queue for accepting sockets
 struct epoll_event Server::events[EPOLL_QUEUE_LEN], Server::event;
+
+// Epoll event queue for worker threads
 struct epoll_event Server::worker_events[NUM_WORKERS][EPOLL_QUEUE_LEN];
 struct epoll_event Server::worker_event[NUM_WORKERS];
+
+// Total number of clients
 int numClients;
+
+// Number of clients per each thread
 int numClientsInThread[NUM_WORKERS];
-pthread_mutex_t worker_mutex;
 
 int main()
 {
@@ -19,12 +25,14 @@ int main()
 
 Server::Server()
 {
+    // Seed the rand() generator
     srand (time(NULL));
     numClients = 0;
     port = SERVER_PORT;
     addr_size = sizeof(struct sockaddr_in);
 
-    thrdInfo = new thrdParams();
+    // Allocate memory for thread param sructures
+    acceptThrdParams = new thrdParams();
     for (int i = 0; i< NUM_WORKERS; i++)
     {
         workerParams[i] = new thrdParams();
@@ -33,6 +41,7 @@ Server::Server()
 
     numClients = 0;
 
+    // Start thread for updating the console
     pthread_create(&updateConsoleThrd, NULL, &UpdateConsole, (void*)1);
 
     // Create the listening socket
@@ -76,44 +85,52 @@ Server::Server()
 
 void Server::startServer()
 {
-
-    // Execute the epoll Server::event loop
-
+    // Thread IDs for worker threads
     pthread_t workerThrds[NUM_WORKERS];
+    // Thread ID for accept thread
     pthread_t acceptThrd;
 
-    thrdInfo->epoll_fd = epoll_fd;
-    thrdInfo->fd_new = fd_new;
-    thrdInfo->fd_server = fd_server;
+    // File descriptors for the accept thread
+    acceptThrdParams->epoll_fd = epoll_fd;
+    acceptThrdParams->fd_new = fd_new;
+    acceptThrdParams->fd_server = fd_server;
 
     for (int i = 0; i < NUM_WORKERS; i++)
     {
+        // Create an epoll_fd for each worker thread
         worker_fds[i] = epoll_create(EPOLL_QUEUE_LEN);
         if (worker_fds[i] == -1)
+        {
             SystemFatal("epoll_create");
+        }
 
-        thrdInfo->worker_fds[i] = worker_fds[i];
+        // Put the worker epoll fds in the accept thread params
+        acceptThrdParams->worker_fds[i] = worker_fds[i];
+        // Each worker thread has its own worker params, and should have its on epoll_fd
         workerParams[i]->worker_fds[i] = worker_fds[i];
+        // Register Epoll events for each worker thread's epoll event queue
         Server::worker_event[i].events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET | EPOLLRDHUP;
     }
 
-    pthread_create(&acceptThrd, NULL, &acceptConnections, (void*)thrdInfo);
+    // Create thread for accepting connections
+    pthread_create(&acceptThrd, NULL, &acceptConnections, (void*)acceptThrdParams);
 
-
+    // Create worker threads for I/O
     for (int i = 0; i< NUM_WORKERS; i++)
     {
+      // Assign each worker thread an index to keep track of which thread we are in
       workerParams[i]->thrdNumber = i;
       pthread_create(&workerThrds[i], NULL, &worker, (void*)workerParams[i]);
     }
 
     for (int i = 0; i< NUM_WORKERS; i++)
     {
+      // Wait for each worker threads to complete
       pthread_join(workerThrds[i], NULL);
-      std::cout << "Thread created";
     }
 
     close(fd_server);
-    delete thrdInfo;
+    delete acceptThrdParams;
 
     for (int i = 0; i < NUM_WORKERS; i++)
       delete workerParams[i];
@@ -123,12 +140,12 @@ void Server::startServer()
 
 void *acceptConnections(void *param)
 {
-    thrdParams *thrdInfo = (thrdParams*)param;
+    thrdParams *acceptThrdParams = (thrdParams*)param;
     struct sockaddr_in remote_addr;
 
     while(TRUE)
     {
-        int num_fds = epoll_wait (thrdInfo->epoll_fd, Server::events, EPOLL_QUEUE_LEN, -1);
+        int num_fds = epoll_wait (acceptThrdParams->epoll_fd, Server::events, EPOLL_QUEUE_LEN, -1);
 
         if (num_fds < 0)
         {
@@ -148,11 +165,11 @@ void *acceptConnections(void *param)
 
 
             // Case 2: Server is receiving a connection request
-            if (Server::events[i].data.fd == thrdInfo->fd_server)
+            if (Server::events[i].data.fd == acceptThrdParams->fd_server)
             {
                 socklen_t addr_size = sizeof(remote_addr);
-                thrdInfo->fd_new = accept (thrdInfo->fd_server, (struct sockaddr*) &remote_addr, &addr_size);
-                if (thrdInfo->fd_new == -1)
+                acceptThrdParams->fd_new = accept (acceptThrdParams->fd_server, (struct sockaddr*) &remote_addr, &addr_size);
+                if (acceptThrdParams->fd_new == -1)
                 {
                     if (errno != EAGAIN && errno != EWOULDBLOCK)
                     {
@@ -162,7 +179,7 @@ void *acceptConnections(void *param)
                 }
 
                 // Make the fd_new non-blocking
-                if (fcntl (thrdInfo->fd_new, F_SETFL, O_NONBLOCK | fcntl(thrdInfo->fd_new, F_GETFL, 0)) == -1)
+                if (fcntl (acceptThrdParams->fd_new, F_SETFL, O_NONBLOCK | fcntl(acceptThrdParams->fd_new, F_GETFL, 0)) == -1)
                 {
                     std::cout << "fcntl";
                     exit(-1);
@@ -170,19 +187,14 @@ void *acceptConnections(void *param)
 
                 // randomly add new socket descriptors to one of the N threads' epoll queue
                 int n = rand() % NUM_WORKERS;
-                Server::worker_event[n].data.fd = thrdInfo->fd_new;
-                if (epoll_ctl (thrdInfo->worker_fds[n], EPOLL_CTL_ADD, thrdInfo->fd_new, &Server::worker_event[n]) == -1)
+                Server::worker_event[n].data.fd = acceptThrdParams->fd_new;
+                if (epoll_ctl (acceptThrdParams->worker_fds[n], EPOLL_CTL_ADD, acceptThrdParams->fd_new, &Server::worker_event[n]) == -1)
                 {
                     std::cout << "epoll_ctl";
                     exit(-1);
                 }
 
-
-
-                //std::cout << " Remote Address: " << inet_ntoa(remote_addr.sin_addr) << std::endl;
-
                 numClientsInThread[n]++;
-                //std::cout << "Clients Connected: " << numClients << std::endl;
                 continue;
             }
         }
@@ -192,13 +204,12 @@ void *acceptConnections(void *param)
 
 void* worker(void* param)
 {
-    thrdParams *thrdInfo = (thrdParams*)param;
-    int index = thrdInfo->thrdNumber;
+    thrdParams *acceptThrdParams = (thrdParams*)param;
+    int index = acceptThrdParams->thrdNumber;
     std::cout<< "thread  index " << index << std::endl;
     while(TRUE)
     {
-        //struct epoll_Server::event Server::events[MAX_Server::eventS];
-        int num_fds = epoll_wait (thrdInfo->worker_fds[index], Server::worker_events[index], EPOLL_QUEUE_LEN, -1);
+        int num_fds = epoll_wait (acceptThrdParams->worker_fds[index], Server::worker_events[index], EPOLL_QUEUE_LEN, -1);
 
         if (num_fds < 0)
         {
@@ -219,20 +230,19 @@ void* worker(void* param)
             }
             assert (Server::worker_events[index][i].events & EPOLLIN);
 
+            // Case 2: Data available to read
             if (Server::worker_events[index][i].events & (EPOLLIN))
             {
-                thrdInfo->fd = Server::worker_events[index][i].data.fd;
-                readSocket((void*)thrdInfo);
-
+                acceptThrdParams->fd = Server::worker_events[index][i].data.fd;
+                readSocket((void*)acceptThrdParams);
             }
 
+            // Case 3: Socket disconnect
             if ( Server::worker_events[index][i].events & (EPOLLRDHUP))
             {
                 close(Server::worker_events[index][i].data.fd);
                 numClientsInThread[index]--;
-                //std::cout << "Clients Connected: " << numClients <<  std::endl;
             }
-            //std::cout << "\r" << "Clients Connected: " << numClients <<  std::flush;
 
         }
 
@@ -240,18 +250,40 @@ void* worker(void* param)
 }
 
 
-void Server::SystemFatal(const char *message)
+void *readSocket(void *param)
 {
-    std::cout << message << std::endl;
-      exit (EXIT_FAILURE);
+    int	n, bytes_to_read;
+    char	*bp, buf[BUFLEN];
+    thrdParams* data = (thrdParams*) param;
+    int fd = data->fd;
+    int index = data->eventIndex;
+
+    bp = buf;
+    bytes_to_read = BUFLEN;
+
+    n = recv (fd, bp, bytes_to_read, 0);
+
+    if (n == 0)
+    {
+        // Socket is disconnected
+        return NULL;
+    }
+    if (n == -1)
+    {
+        if (errno != EAGAIN && errno != EWOULDBLOCK)
+        {
+            // Error
+            return NULL;
+        }
+    }
+
+    send (fd, buf, BUFLEN, 0);
+
+    return NULL;
+
 }
 
 
-void Server::close_fd(int signo)
-{
-    close(fd_server);
-        exit (EXIT_SUCCESS);
-}
 
 void* UpdateConsole(void *param)
 {
@@ -270,58 +302,9 @@ void* UpdateConsole(void *param)
 }
 
 
-void *readSocket(void *param)
+
+void Server::SystemFatal(const char *message)
 {
-    int	n, bytes_to_read;
-        char	*bp, buf[BUFLEN];
-        thrdParams* data = (thrdParams*) param;
-        int fd = data->fd;
-        int index = data->eventIndex;
-
-        bp = buf;
-        bytes_to_read = BUFLEN;
-       /* while ((n = recv (fd, bp, bytes_to_read, 0)) < BUFLEN)
-        {
-            bp += n;
-            bytes_to_read -= n;
-
-
-            if (n == 0)
-            {
-                break;
-                //qDebug() << "Client Disconnect";
-                //close(fd);
-                //app->ClientDisconnect();
-
-                //pthread_exit(0);
-            }
-            if (n == -1)
-            {
-                if (errno != EAGAIN && errno != EWOULDBLOCK)
-                {
-                    break;
-                  //  pthread_exit(0);
-                }
-                continue;
-            }
-
-        }*/
-        //std::cout << "Sending: " << buf << std::endl;
-        n = recv (fd, bp, bytes_to_read, 0);
-
-        if (n == 0)
-        {
-            return NULL;
-        }
-        if (n == -1)
-        {
-            if (errno != EAGAIN && errno != EWOULDBLOCK)
-            {
-                return NULL;
-            }
-        }
-
-        send (fd, buf, BUFLEN, 0);
-               // pthread_exit(0); // Return n bytes read immediately we dont want this thread running forever.
-
+    std::cout << message << std::endl;
+      exit (EXIT_FAILURE);
 }

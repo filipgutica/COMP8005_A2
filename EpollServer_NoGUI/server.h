@@ -71,11 +71,10 @@ private:
     struct sockaddr_in addr, remote_addr;
     socklen_t addr_size;
     pthread_t readThread, updateConsoleThrd;
-    thrdParams *thrdInfo;
+    thrdParams *acceptThrdParams;
     thrdParams *workerParams[NUM_WORKERS];
 
     void SystemFatal (const char* message);
-    void close_fd (int);
 
 
 };
