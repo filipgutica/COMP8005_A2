@@ -63,7 +63,7 @@ Server::Server()
         SystemFatal("epoll_create");
 
     // Add the server socket to the epoll Server::event loop
-    Server::event.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET | EPOLLRDHUP;
+    Server::event.events = EPOLLIN;
     Server::event.data.fd = fd_server;
     if (epoll_ctl (epoll_fd, EPOLL_CTL_ADD, fd_server, &Server::event) == -1)
         SystemFatal("epoll_ctl");
@@ -167,7 +167,6 @@ void *acceptConnections(void *param)
 
                 // Add the new socket descriptor to the epoll loop
                 int n = rand() % 4;
-                std::cout << "Assigning to thread: " << n << std::endl;
                 Server::worker_event[n].data.fd = thrdInfo->fd_new;
                 if (epoll_ctl (thrdInfo->worker_fds[n], EPOLL_CTL_ADD, thrdInfo->fd_new, &Server::worker_event[n]) == -1)
                 {
@@ -204,7 +203,6 @@ void* worker(void* param)
             exit(-1);
         }
 
-        //pthread_mutex_lock(&worker_mutex);
         for (int i = 0; i < num_fds; i++)
         {
 
@@ -216,7 +214,7 @@ void* worker(void* param)
                 close(Server::worker_events[index][i].data.fd);
                 continue;
             }
-            //assert (Server::worker_events[index][i].events & EPOLLIN);
+            assert (Server::worker_events[index][i].events & EPOLLIN);
 
             if (Server::worker_events[index][i].events & (EPOLLIN))
             {
@@ -237,7 +235,6 @@ void* worker(void* param)
             //std::cout << "\r" << "Clients Connected: " << numClients <<  std::flush;
 
         }
-        //pthread_mutex_unlock(&worker_mutex);
 
     }
 }
