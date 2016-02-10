@@ -5,6 +5,7 @@ struct epoll_event Server::events[EPOLL_QUEUE_LEN], Server::event;
 struct epoll_event Server::worker_events[NUM_WORKERS][EPOLL_QUEUE_LEN];
 struct epoll_event Server::worker_event[NUM_WORKERS];
 int numClients;
+int numClientsInThread[NUM_WORKERS];
 pthread_mutex_t worker_mutex;
 
 int main()
@@ -25,7 +26,10 @@ Server::Server()
 
     thrdInfo = new thrdParams();
     for (int i = 0; i< NUM_WORKERS; i++)
+    {
         workerParams[i] = new thrdParams();
+        numClientsInThread[i] = 0;
+    }
 
     numClients = 0;
 
@@ -137,7 +141,6 @@ void *acceptConnections(void *param)
             // Case 1: Error condition
             if (Server::events[i].events & (EPOLLHUP | EPOLLERR))
             {
-                numClients--;
                 std::cout << "EPOLL ERROR" << std::endl;
                 close(Server::events[i].data.fd);
                 continue;
@@ -165,7 +168,7 @@ void *acceptConnections(void *param)
                     exit(-1);
                 }
 
-                // Add the new socket descriptor to the epoll loop
+                // randomly add new socket descriptors to one of the N threads' epoll queue
                 int n = rand() % NUM_WORKERS;
                 Server::worker_event[n].data.fd = thrdInfo->fd_new;
                 if (epoll_ctl (thrdInfo->worker_fds[n], EPOLL_CTL_ADD, thrdInfo->fd_new, &Server::worker_event[n]) == -1)
@@ -177,8 +180,8 @@ void *acceptConnections(void *param)
 
 
                 //std::cout << " Remote Address: " << inet_ntoa(remote_addr.sin_addr) << std::endl;
-                numClients++;
 
+                numClientsInThread[n]++;
                 //std::cout << "Clients Connected: " << numClients << std::endl;
                 continue;
             }
@@ -209,7 +212,7 @@ void* worker(void* param)
             // Case 1: Error condition
             if (Server::worker_events[index][i].events & (EPOLLHUP | EPOLLERR))
             {
-                numClients--;
+                numClientsInThread[index]--;
                 std::cout << "EPOLL ERROR" << std::endl;
                 close(Server::worker_events[index][i].data.fd);
                 continue;
@@ -226,7 +229,7 @@ void* worker(void* param)
             if ( Server::worker_events[index][i].events & (EPOLLRDHUP))
             {
                 close(Server::worker_events[index][i].data.fd);
-                numClients--;
+                numClientsInThread[index]--;
                 //std::cout << "Clients Connected: " << numClients <<  std::endl;
             }
             //std::cout << "\r" << "Clients Connected: " << numClients <<  std::flush;
@@ -255,7 +258,14 @@ void* UpdateConsole(void *param)
     while(TRUE)
     {
         usleep(100000);
-        std::cout << "Clients Connected: " << numClients <<  std::endl;
+        numClients = 0;
+        for (int i = 0; i < NUM_WORKERS; i++)
+        {
+          std::cout << "Clients in thread: " << i << ", " << numClientsInThread[i] << std::endl;
+          numClients += numClientsInThread[i];
+        }
+
+        std::cout << "Total Clients Connected: " << numClients <<  std::endl;
     }
 }
 

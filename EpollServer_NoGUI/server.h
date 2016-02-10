@@ -46,6 +46,7 @@ extern void* UpdateConsole(void *param);
 extern void* worker(void *param);
 extern void* acceptConnections(void *param);
 extern int numClients;
+extern int numClientsInThread[NUM_WORKERS];
 
 class Server
 
