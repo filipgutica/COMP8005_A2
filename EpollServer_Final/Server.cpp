@@ -255,10 +255,13 @@ void readSocket(int fd)
     int	n, bytes_to_read;
     char	*bp, buf[BUFLEN];
 
+    memset(buf, 0, sizeof(buf));
+
     bp = buf;
     bytes_to_read = BUFLEN;
 
-    n = recv (fd, bp, bytes_to_read, 0);
+    //n = recv (fd, bp, bytes_to_read, 0);
+    n = read(fd, bp, BUFLEN);
 
     if (n == 0)
     {
@@ -281,6 +284,7 @@ void readSocket(int fd)
     return;
 }
 
+// Incase we want to thread this ever
 void *readSocket(void *param)
 {
     int	n, bytes_to_read;
