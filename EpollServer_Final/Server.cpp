@@ -270,7 +270,7 @@ void readSocket(int fd)
       if (n == 0)
       {
           // Socket is disconnected
-          close(fd);
+          //close(fd);
           return;
       }
       if (n == -1)
@@ -278,7 +278,7 @@ void readSocket(int fd)
           if (errno != EAGAIN && errno != EWOULDBLOCK)
           {
               // Error
-              close(fd);
+              //close(fd);
               return;
           }
       }
