@@ -260,23 +260,33 @@ void readSocket(int fd)
     bp = buf;
     bytes_to_read = BUFLEN;
 
-    //n = recv (fd, bp, bytes_to_read, 0);
-    n = read(fd, bp, BUFLEN);
+    while ((n = recv (fd, bp, bytes_to_read, 0)) < BUFLEN)
+    {
+      //n = read(fd, bp, BUFLEN);
 
-    if (n == 0)
-    {
-        // Socket is disconnected
-        close(fd);
-        return;
-    }
-    if (n == -1)
-    {
-        if (errno != EAGAIN && errno != EWOULDBLOCK)
-        {
-            // Error
-            close(fd);
-            return;
-        }
+      bp += n;
+  		bytes_to_read -= n;
+
+      if (n == 0)
+      {
+          // Socket is disconnected
+          close(fd);
+          return;
+      }
+      if (n == -1)
+      {
+          if (errno != EAGAIN && errno != EWOULDBLOCK)
+          {
+              // Error
+              close(fd);
+              return;
+          }
+      }
+
+      if (strchr(bp, EOF) != NULL)
+      {
+        break;
+      }
     }
 
     send (fd, buf, BUFLEN, 0);
