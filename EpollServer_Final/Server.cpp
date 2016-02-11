@@ -205,12 +205,12 @@ void *acceptConnections(void *param)
 
 void* worker(void* param)
 {
-    thrdParams *acceptThrdParams = (thrdParams*)param;
-    int index = acceptThrdParams->thrdNumber;
+    thrdParams *workerParams = (thrdParams*)param;
+    int index = workerParams->thrdNumber;
     std::cout<< "thread  index " << index << std::endl;
     while(TRUE)
     {
-        int num_fds = epoll_wait (acceptThrdParams->worker_fds[index], Server::worker_events[index], EPOLL_QUEUE_LEN, -1);
+        int num_fds = epoll_wait (workerParams->worker_fds[index], Server::worker_events[index], EPOLL_QUEUE_LEN, -1);
 
         if (num_fds < 0)
         {
